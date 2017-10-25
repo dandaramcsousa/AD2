@@ -1,0 +1,66 @@
+---
+title: "Atividade 1"
+author: "Dandara Sousa"
+date: "25 de outubro de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(readr)
+
+```
+
+
+```{r}
+dataCEAP <- read.csv("dadosCEAP.csv")
+dataCEAP$valorGlosa <- as.numeric(sub(",", ".", dataCEAP$valorGlosa, fixed = TRUE)) 
+```
+# Quais os partidos que mais fazem uso da CEAP? Quais os partidos que menos fazem uso? Mesmas perguntas conisderando valores em R$.
+
+```{r}
+dataCEAP %>% 
+  group_by(sgPartido) %>%
+  summarise(n = sum(valorLíquido)) %>%
+  ggplot(aes(x = sgPartido, y = n)) + 
+  geom_bar(stat = "identity", fill = "dark blue") +
+  coord_flip() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  labs(x="Gasto ($) ",y="Sigla do Partido")
+  
+```
+
+
+# Quais os tipos de despesa mais comuns no uso da CEAP? Mesma pergunta considerando valores em R$.
+```{r}
+dataCEAP %>% 
+  group_by(tipoDespesa) %>%
+  summarise(n = n()) %>%
+  ggplot(aes(x = tipoDespesa, y = n)) + 
+  geom_bar(stat = "identity", fill = "dark blue") +
+  coord_flip()
+```
+# Levando em conta o estado pelo qual o deputado se elegeu, quais os estados que mais fazem uso da CEAP? Quais os que menos fazem uso? Mesmas perguntas considerando gastos em R$. Por que você acha isso?
+```{r}
+dataCEAP %>% 
+  group_by(sgUF) %>%
+  summarise(n = n()) %>%
+  ggplot(aes(x = sgUF, y = n)) + 
+  geom_bar(stat = "identity", fill = "dark blue") +
+  coord_flip()
+```
+
+# Quais os parlamentares que mais gastam com CEAP e quais os que menos gastam?
+organizar top 10 mais gastos e top 10 menos gastos
+```{r}
+dataCEAP %>% 
+  group_by(nomeParlamentar) %>%
+  summarise(n = n()) %>%
+  ggplot(aes(x = nomeParlamentar, y = n)) + 
+  geom_bar(stat = "identity", fill = "dark blue") +
+  coord_flip()
+```
+
+# Existe correlação entre a quantidade de gastos no exterior e o valor restituído da CEAP?
