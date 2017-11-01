@@ -1,66 +1,184 @@
 ---
-title: "Atividade 1"
+title: "Análise de Gastos de Deputados"
 author: "Dandara Sousa"
 date: "25 de outubro de 2017"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 library(tidyverse)
 library(ggplot2)
 library(readr)
-
+theme_set(theme_minimal())
 ```
 
+## Introdução
+
+Esta é uma análise sobre os gastos da Cota Parlamentar dos deputados no Brasil nos anos de 2015, 2016 e 2017. Veremos nesse post explanações sobre como os parlamentares estão usando essa Cota e como podemos visualizar esse gasto por estado, partido, tipo...
 
 ```{r}
 dataCEAP <- read.csv("dadosCEAP.csv")
 dataCEAP$valorGlosa <- as.numeric(sub(",", ".", dataCEAP$valorGlosa, fixed = TRUE)) 
+names(dataCEAP)[13]<-"valorLíquido"
+
 ```
-# Quais os partidos que mais fazem uso da CEAP? Quais os partidos que menos fazem uso? Mesmas perguntas conisderando valores em R$.
+
+Primeiro, vamos conhecer um pouco sobre nossos dados. Ter uma noção de quantos deputados de cada partido faz parte do conjunto de dados e por estados nos ajudará a ter uma interpretação mais fiel dos dados.
+
+```{r include=FALSE}
+dataCEAP %>%
+  select(sgPartido, nomeParlamentar) %>%
+  unique() %>%
+  group_by(sgPartido) %>%
+  filter(!sgPartido %in% NA) %>%
+  summarise(n = n())%>%
+  ggplot(aes(x=sgPartido, n))+
+  geom_bar(width = 1, stat = "identity", , fill = "#cfd8dc") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  labs(x="Partido",y="Quantidade de deputados")
+```
+
+```{r}
+dataCEAP %>%
+  select(sgUF, nomeParlamentar) %>%
+  unique() %>%
+  group_by(sgUF) %>%
+  filter(!sgUF %in% NA) %>%
+  summarise(n = n())%>%
+  ggplot(aes(x=sgUF, n))+
+  geom_bar(width = 1, stat = "identity", fill = "#cfd8dc") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  labs(x="Estado",y="Quantidade de deputados")
+
+```
+
+O que temos até então? Que devemos sempre lembrar que o PMDB e PT nesse caso possuem uma forte presença na bancada e que provavelmente esses partidos estarão entre os que mais gastam/usam a CEAP. Assim, de mesma forma, temos a analogia para São Paulo que disparadamente possui uma grande quantidade de deputados nesse conjunto de dados.
+
+## Quais os partidos que mais fazem uso da CEAP? Quais os partidos que menos fazem uso? Mesmas perguntas considerando valores em R$.
+
+Para responder nossa primeira pergunta vamos olhar em como os partidos usam a CEAP.
+
+```{r}
+dataCEAP %>%
+  group_by(sgPartido) %>%
+  filter(!sgPartido %in% NA) %>%
+  summarise(n = n()) %>%
+  ggplot(aes(x = reorder(sgPartido, n), y = n)) + 
+  geom_bar(stat = "identity", fill = "#cfd8dc") +
+  coord_flip() + 
+  labs(x="Sigla do Partido",y="Uso")
+```
+
 
 ```{r}
 dataCEAP %>% 
   group_by(sgPartido) %>%
+  filter(!sgPartido %in% NA) %>%
   summarise(n = sum(valorLíquido)) %>%
-  ggplot(aes(x = sgPartido, y = n)) + 
-  geom_bar(stat = "identity", fill = "dark blue") +
+  ggplot(aes(x = reorder(sgPartido, n), y = n)) + 
+  geom_bar(stat = "identity", fill = "#cfd8dc") +
   coord_flip() + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-  labs(x="Gasto ($) ",y="Sigla do Partido")
+  labs(x="Sigla do Partido",y="Gasto ($)")
   
 ```
 
+A partir de um gráfico de barras é possível facilmente perceber que os partidos do PMDB, PT, PSDB, PP e PR são os cinco partidos que mais gastam com a CEAP e também os que mais usam do recurso. Como dito anteriormente, era esperado que o PT e PMDB estivessem em destaque por seu volume no parlamento.
 
-# Quais os tipos de despesa mais comuns no uso da CEAP? Mesma pergunta considerando valores em R$.
+## Quais os tipos de despesa mais comuns no uso da CEAP? Mesma pergunta considerando valores em R$.
+
+Novamente com gráfico de barras podemos analisar os gastos com a CEAP. Nesse caso é possível ver que mais comunente se usa a CEAP para custear emissão de bilhete aéreo, combustíveis e lubrificantes e telefonia. Isso pode ser justificado se levar em consideração que no âmbito de carreira do parlamento as viagens são rotineiras.
+
 ```{r}
 dataCEAP %>% 
   group_by(tipoDespesa) %>%
+  filter(!sgPartido %in% NA) %>%
   summarise(n = n()) %>%
-  ggplot(aes(x = tipoDespesa, y = n)) + 
-  geom_bar(stat = "identity", fill = "dark blue") +
-  coord_flip()
+  ggplot(aes(x = reorder(tipoDespesa,n), y = n)) + 
+  geom_bar(stat = "identity", fill = "#cfd8dc") +
+  coord_flip() +
+  labs(x="Despesa ",y="Gasto ($)")
 ```
-# Levando em conta o estado pelo qual o deputado se elegeu, quais os estados que mais fazem uso da CEAP? Quais os que menos fazem uso? Mesmas perguntas considerando gastos em R$. Por que você acha isso?
+
+
+
+## Levando em conta o estado pelo qual o deputado se elegeu, quais os estados que mais fazem uso da CEAP? Quais os que menos fazem uso? Mesmas perguntas considerando gastos em R$. Por que você acha isso?
+
 ```{r}
 dataCEAP %>% 
   group_by(sgUF) %>%
+  filter(!sgUF %in% NA) %>%
   summarise(n = n()) %>%
-  ggplot(aes(x = sgUF, y = n)) + 
-  geom_bar(stat = "identity", fill = "dark blue") +
-  coord_flip()
+  ggplot(aes(x = reorder(sgUF, n), y = n)) + 
+  geom_bar(stat = "identity", fill = "#cfd8dc") +
+  coord_flip() +
+  labs(x="Uso",y="Estado")
+
 ```
 
-# Quais os parlamentares que mais gastam com CEAP e quais os que menos gastam?
-organizar top 10 mais gastos e top 10 menos gastos
+
 ```{r}
 dataCEAP %>% 
-  group_by(nomeParlamentar) %>%
-  summarise(n = n()) %>%
-  ggplot(aes(x = nomeParlamentar, y = n)) + 
-  geom_bar(stat = "identity", fill = "dark blue") +
+  group_by(sgUF) %>%
+  filter(!sgUF %in% NA) %>%
+  summarise(n = sum(valorLíquido)) %>%
+  ggplot(aes(x = reorder(sgUF, n), y = n)) + 
+  geom_bar(stat = "identity", fill = "#cfd8dc") +
+  labs(x="Gasto ($)",y="Estado") +
   coord_flip()
 ```
 
-# Existe correlação entre a quantidade de gastos no exterior e o valor restituído da CEAP?
+A partir de ambos os gráficos vemos que a situação se repete de certa forma. São Paulo é o estado quem mais usa e gasta da CEAP, seguido de Minas Gerais e Rio de Janeiro. O que de certa forma previmos já que São Paulo é de longe o estado com maior presença parlamentar.
+
+## Quais os parlamentares que mais gastam com CEAP e quais os que menos gastam?
+
+```{r}
+data.dep <- dataCEAP %>% 
+  group_by(nomeParlamentar) %>%
+  summarise(n = sum(valorLíquido))
+```
+
+Os deputados que mais gastaram e menos gastaram respectivamente são:
+
+```{r}
+data.dep[order(-data.dep$n),] %>%  
+  head(10) %>%
+  ggplot(aes(x = nomeParlamentar, y = n)) + 
+  geom_bar(stat = "identity", fill = "#cfd8dc") +
+  coord_flip()+
+  labs(x="Gasto ($)",y="Parlamentar")
+
+```
+
+ 
+```{r}
+data.dep[order(data.dep$n),] %>%  
+  head(10) %>%
+  ggplot(aes(x = nomeParlamentar, y = n)) + 
+  geom_bar(stat = "identity", fill = "#cfd8dc") +
+  coord_flip() +
+  labs(x="Gasto ($)",y="Parlamentar")
+
+```
+
+## Existe correlação entre a quantidade de gastos no exterior e o valor restituído da CEAP?
+
+A partir do exposto abaixo é possível perceber que não há correlação entre as variáveis.
+
+```{r}
+dataCEAP.dep <- dataCEAP %>%
+  group_by(nomeParlamentar) %>%
+  summarise(sGastos = sum(valorLíquido))
+  
+dataCEAP.dep.exterior <- dataCEAP %>%
+  filter(tipoDocumento == 2) %>%
+  group_by(nomeParlamentar) %>%
+  summarise(nGastos = n())
+
+dataCEAP.dep.exterior %>%
+  left_join(dataCEAP.dep, by= "nomeParlamentar") %>%
+  select(sGastos, nGastos) %>%
+  cor()
+  
+```
+
