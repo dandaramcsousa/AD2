@@ -1,0 +1,62 @@
+---
+title: "Análise de Gastos de Deputados ++"
+author: "Dandara Sousa"
+date: "25 de outubro de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(ggplot2)
+library(readr)
+library(plotly)
+
+theme_set(theme_minimal())
+```
+
+Esta é uma análise sobre os gastos da Cota Parlamentar dos deputados no Brasil nos anos de 2015, 2016 e 2017. Veremos nesse post explanações sobre como os parlamentares estão usando essa Cota e como podemos visualizar esse gasto por estado, partido, tipo... Essa análise foi iniciada previamente e pode ser consultada [aqui](https://rpubs.com/dandaramcsousa/analisedegastosdedeputados).  
+
+```{r}
+dataCEAP <- read.csv("dadosCEAP.csv")
+dataCEAP$valorGlosa <- as.numeric(sub(",", ".", dataCEAP$valorGlosa, fixed = TRUE)) 
+names(dataCEAP)[13]<-"valorLiquido"
+
+```
+
+Vimos anteriormente que o PT é o partido que mais gasta em R$ com a CEAP. **Qual seria o deputado que mais faz uso da Cota?** Seria ele do PT ou talvez de um partido menor que nem chegamos a cogitar?
+
+```{r}
+dep.top10 <- dataCEAP %>%
+  group_by(nomeParlamentar,sgPartido,sgUF) %>%
+  summarise(n = sum(valorLiquido))
+dep.top10 <- dep.top10[order(-dep.top10$n),]
+
+dep.top10 %>%
+  head(10) %>%
+  plot_ly(x = ~reorder(nomeParlamentar,n), y = ~n, color = ~sgPartido, type = "scatter") %>%
+  layout(title = "",
+         xaxis = list(title = "Parlamentar"),
+         yaxis = list(title = "Valor (em R$) gastos na cota")) 
+```
+
+A partir da visualização acima é possível perceber que nem temos entre os 10 deputados que mais gastam da Cota representantes dos partidos ditos que, em soma, são os que mais gastam. Apenas do partido que vem em terceiro lugar, o PSDB, com o deputado Rocha que ocupa a sexta posição dos deputados que mais gastaram.  
+Outra coisa que conseguimos notar é que o Edio Lopes é um ótimo gastador. Ele fica bem a frente até do Heran que é o segundo colocado. **Com o que será que o Edio gasta tanto a cota?** Ele estaria seguindo a maré e gastando muito com emissão de bilhetes aéreos? Vimos anteriormente que esse era o gasto mais comum entre os parlamentares.  
+ 
+```{r}
+whoisedio <- dataCEAP %>%
+  filter(nomeParlamentar == "EDIO LOPES")
+  
+            
+whoisedio %>%
+  group_by(tipoDespesa) %>%
+  summarise(n = sum(valorLiquido)) %>%
+  plot_ly(x = ~reorder(tipoDespesa,n), y = ~n, type = "bar") %>%
+  layout(title = "",
+         xaxis = list(title = "Despesa"),
+         yaxis = list(title = "Valor (em R$) gastos na cota com a despesa")) 
+```
+
+Vale lembrar que Edio está nos dados desde 2015. Ou seja, em 3 anos ele parece ter viajado e investido muito em divulgar o que tem feito. Vale lembrar que ele é um político com a [ficha](http://www.revolucaobrasileira.com.br/PMDB/Edio_Lopes) nada limpa. Será que ele divulga também as citações na justiça?  
+
+Parece até que esse post está se tornando uma perseguição à Edio Lopes, o que obviamente não está sendo feito. É apenas curiosidade. Então, para terminar as indagações, vamos conhecer um pouco mais do Edio. 
