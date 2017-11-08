@@ -59,4 +59,16 @@ whoisedio %>%
 
 Vale lembrar que Edio está nos dados desde 2015. Ou seja, em 3 anos ele parece ter viajado e investido muito em divulgar o que tem feito. Vale lembrar que ele é um político com a [ficha](http://www.revolucaobrasileira.com.br/PMDB/Edio_Lopes) nada limpa. Será que ele divulga também as citações na justiça?  
 
-Parece até que esse post está se tornando uma perseguição à Edio Lopes, o que obviamente não está sendo feito. É apenas curiosidade. Então, para terminar as indagações, vamos conhecer um pouco mais do Edio. 
+Parece até que esse post está se tornando uma perseguição à Edio Lopes, o que obviamente não está sendo feito. É apenas curiosidade. Então, para terminar as indagações, vamos conhecer um pouco mais do Edio. Vamos tentar comparar o gasto dele com o gasto dos companheiros dele do mesmo estado. **Será que os gastos dos outros deputados é muito menor que o de Edio?** Dado o perfil gastador dele, muito provavelmente sim.
+
+```{r}
+dataCEAP.RR <- dataCEAP %>%
+  filter(sgUF == "RR")
+
+dataCEAP.RR %>%
+  group_by(nomeParlamentar)%>%
+  plot_ly(x = ~reorder(nomeParlamentar,valorLiquido), y = ~valorLiquido, type = "box", alpha = .5) %>%
+  layout(title = "",
+         yaxis = list(title = "Valor (em R$) gastos na cota com a despesa"))
+```
+A partir daí podemos ver que o Edio gasta bastante em "pequenos" valores. Temos um deputado que gosta de investir alto. O Jhonatan de Jesus tem um gasto de 88.5K que foi com Divulgação Parlamentar. É interessante ver como divulgação é um negócio de investimento alto feito pelos parlamentares e que o contribuinte paga.
