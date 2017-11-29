@@ -5,6 +5,8 @@ date: "22 de novembro de 2017"
 output: html_document
 ---
 
+Primeiro, vamos carregar as bibliotecas e dados que serão utilizados:
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 library(tidyverse)
@@ -27,29 +29,32 @@ dataVotos <- read.csv("eleicoes2014.csv", encoding = "latin1") %>%
 missmap(dataVotos)
 ```
 
-
-### 1.Um modelo de regressão múltipla com todas as variáveis é plausível para explicar a variação em y (número de votos)? Justifique sua resposta. (9 pts.)
-
-Como há variáveis com valores faltantes vamos excluí-las para o não comprometimento do modelo. A estatística F e o tamanho da amostra é maior do que o número de preditores e, assim, podemos dizer que há ao menos uma variável com relação com a variável alvo.
+A partir do missmap acima percebemos que há muitos dados faltando. Por isso, vamos excluí-los para o não comprometimento do modelo. 
 
 ```{r}
 dataVotos.rm <- dataVotos %>%
-  select(-`recursos_de_outros_candidatos.comites`, -recursos_de_partidos, -recursos_de_pessoas_juridicas, -recursos_de_pessoas_físicas, -recursos_proprios, 
-          -sequencial_candidato, -numero_cadidato, -setor_economico_receita, 
-         -setor_economico_despesa, -nome)
+  select(-`recursos_de_outros_candidatos.comites`, -recursos_de_partidos,-recursos_de_pessoas_juridicas, -recursos_de_pessoas_físicas, -recursos_proprios, -sequencial_candidato, -numero_cadidato, -setor_economico_receita, -setor_economico_despesa, -nome)
+```
 
+
+### Questões
+**1.Um modelo de regressão múltipla com todas as variáveis é plausível para explicar a variação em y (número de votos)? Justifique sua resposta. (9 pts.)**
+
+Vamos criar o modelo de regressão e analisá-lo.
+
+```{r}
 dataVotos.model <- lm(votos~., data = dataVotos.rm)
 summary(dataVotos.model)
 
 ```
+A estatística F é maior que 1, isso nos dá a ideia de que há variáveis que estão ligadas com a variável votos. O tamanho da amostra também é maior do que o número de preditores e com essas duas informações podemos inferir que há ao menos uma relação entre variável de entrada e variável alvo. 
+Visto isto, podemos voltar os olhos para o p-value. Se ele for menor que 0,05 isso indica que há fortes evidências que a variável seja boa preditora para o modelo. Caso contrário, a ideia é que, talvez, a variável não seja uma boa preditora para o modelo. No nosso caso, o p-value é abaixo de 0,05 e isso é um bom sinal.
+Vale observar também o R² ajustado que mede o quão bem o modelo consegue explicar a variabilidade dos dados. Nosso R² ajustado é de 0,4543 e isso talvez seja uma indicação para fazermos ajustes no modelo.
 
 
-```{r}
-plot(dataVotos.model)
-```
+**2.Todas as variáveis são úteis para o modelo de regressão? Há variáveis redudantes? Justifique sua resposta em ambos os casos. (9 pts.)**
 
-
-### 2.Todas as variáveis são úteis para o modelo de regressão? Há variáveis redudantes? Justifique sua resposta em ambos os casos. (9 pts.)
+Nesse questionamento usaremos a seleção de variáveis para diagnosticar quais preditores estão associados com a variável resposta e quais podem ser descartados.
 
 ```{r}
 dataVotos.uteis <- regsubsets(votos ~ ., data = dataVotos.rm,nbest = 1,nvmax = NULL, force.in = NULL, force.out = NULL,method = "forward")
@@ -57,25 +62,31 @@ summary.out <- summary(dataVotos.uteis)
 summary.out
 ```
 
+Temos mais de 60 possíveis modelos e diante disso gostaríamos de saber qual o melhor modelo seria melhor ajustado para nós.
+
 ```{r}
 which.max(summary.out$adjr2)
 ```
+E, agora, saber desse modelo, quais são as variáveis presentes nele.
+
 ```{r}
 summary.out$which[38,]
 ```
-UF, partido, total_receita, total_despesa, grau, estado_civil, media_receita, media_despesa, quantidade_doacoes, quantidade_doadores, quantidade_despesas, quantidade fornecedores, idade, sexo
 
-### 3.No caso de haver variáveis pouco explicativas e/ou redudantes, construa um novo modelo sem essas variáveis e o compare ao modelo com todas as variáveis (e.g. em termos de R2 e RSE). (9 pts.)
+UFBA, UFDF, UFMG, UFPB, UFRJ, UFRO, UFRS, UFSE, partidoPMN, partidoPR,partidoPSC, partidoPSDB,quantidade_doacoes, total_receita, quantidade_despesas, total_despesa, grauSUPERIOR COMPLETO, UFAP, UFCEM UFMA, UFMS, UFPA, UFPE, UFRN, UFRR, UFSC, partidoPMDB, partidoPP, partidoPRB, partidoPTB, quantidade_doadores, media_receita, quantidade_fornecedores, media_despesa, sexoMASCULINO, grauSUPERIOR INCOMPLETO, estado_civilSEPARADO(A) JUDICIALMENTE, estado_civilVIÚVO(A) 
+
+
+**3.No caso de haver variáveis pouco explicativas e/ou redudantes, construa um novo modelo sem essas variáveis e o compare ao modelo com todas as variáveis (e.g. em termos de R2 e RSE). (9 pts.)**
+No visto acima, apenas o fator idade não importaria. Assim, temos um novo modelo. 
 ```{r}
 dataVotos.model.new <- dataVotos.rm %>%
   dplyr :: select(
-    UF, partido, total_receita, total_despesa, grau, estado_civil, media_receita, media_despesa, quantidade_doacoes, quantidade_doadores, quantidade_despesas, quantidade_fornecedores, idade, sexo, votos
-  )
+    UF, partido, quantidade_doacoes, total_receita,quantidade_despesas, total_despesa, grau, quantidade_doadores, media_receita, quantidade_fornecedores, media_despesa, estado_civil, sexo,         votos)
 data.best.model <- lm(votos~., data = dataVotos.model.new)
 summary(data.best.model)
 ```
 
-
+Comparando, no primeiro modelo a estatística F era de 45,88 contra o dee agora de 46,49, o R² ajustado agora é de 0,4544 que é muito pouco maior que o anterior.
 
 ### 4. Analise plots de resíduos e verifique se há tendências nos erros. (9 pts.)
 
