@@ -53,13 +53,36 @@ plot(dataVotos.model)
 
 ```{r}
 dataVotos.uteis <- regsubsets(votos ~ ., data = dataVotos.rm,nbest = 1,nvmax = NULL, force.in = NULL, force.out = NULL,method = "forward")
-summary(dataVotos.uteis)
+summary.out <- summary(dataVotos.uteis)
+summary.out
+```
+
+```{r}
+which.max(summary.out$adjr2)
+```
+```{r}
+summary.out$which[38,]
+```
+UF, partido, total_receita, total_despesa, grau, estado_civil, media_receita, media_despesa, quantidade_doacoes, quantidade_doadores, quantidade_despesas, quantidade fornecedores, idade, sexo
+
+### 3.No caso de haver variáveis pouco explicativas e/ou redudantes, construa um novo modelo sem essas variáveis e o compare ao modelo com todas as variáveis (e.g. em termos de R2 e RSE). (9 pts.)
+```{r}
+dataVotos.model.new <- dataVotos.rm %>%
+  dplyr :: select(
+    UF, partido, total_receita, total_despesa, grau, estado_civil, media_receita, media_despesa, quantidade_doacoes, quantidade_doadores, quantidade_despesas, quantidade_fornecedores, idade, sexo, votos
+  )
+data.best.model <- lm(votos~., data = dataVotos.model.new)
+summary(data.best.model)
 ```
 
 
-### 3.No caso de haver variáveis pouco explicativas e/ou redudantes, construa um novo modelo sem essas variáveis e o compare ao modelo com todas as variáveis (e.g. em termos de R2 e RSE). (9 pts.)
 
 ### 4. Analise plots de resíduos e verifique se há tendências nos erros. (9 pts.)
+
+```{r}
+plot(dataVotos.model)$residuals
+
+```
 
 ### 5. Quais variáveis conseguem explicar melhor o número de votos? Justifique sua resposta. (9 pts.)
 
