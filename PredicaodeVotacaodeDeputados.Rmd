@@ -1,0 +1,117 @@
+---
+title: "Predição de Votação de Deputados"
+author: "Dandara Sousa"
+date: "11 de dezembro de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(ggplot2)
+library(readr)
+library(dplyr) 
+
+library(Amelia)
+library(caret)
+
+theme_set(theme_minimal())
+```
+
+
+```{r}
+dataVotos <- read.csv("eleicoes2014.csv", encoding = "latin1")
+missmap(dataVotos)
+
+
+dataVotos <- dataVotos %>%
+  mutate(
+      recursos_de_pessoas_físicas = replace(recursos_de_pessoas_físicas,is.na(recursos_de_pessoas_físicas),0),
+      recursos_de_pessoas_juridicas= replace(recursos_de_pessoas_juridicas,is.na(recursos_de_pessoas_juridicas),0),
+      recursos_de_outros_candidatos.comites= replace(recursos_de_outros_candidatos.comites,is.na(recursos_de_outros_candidatos.comites),0),
+      recursos_de_partidos = replace(recursos_de_partidos, is.na(recursos_de_partidos), 0),
+      recursos_proprios = replace(recursos_proprios, is.na(recursos_proprios),0)
+  )
+```
+
+tirar porque nao influenciam ~talvez tentar mudar de factor p char alguns~
+```{r}
+dataVotos.ajustado <- dataVotos %>%
+  select(-nome, -sequencial_candidato, -numero_cadidato, -cargo, -setor_economico_despesa, -setor_economico_receita,  -partido, -UF)
+```
+
+_separação em dados e treino:_
+```{r}
+smp_size <- floor(.7*nrow(dataVotos.ajustado))
+set.seed(123)
+train_id <- sample(seq_len(nrow(dataVotos.ajustado)), size = smp_size)
+
+dataVotos.treino <- dataVotos.ajustado[train_id,]
+dataVotos.teste <- dataVotos.ajustado[-train_id,]
+```
+
+_reamostragem:_
+```{r}
+dataVotos.control <- trainControl(method = "cv",
+                                  number = 10,
+                                  repeats = 10
+                                  )
+
+```
+
+**1. Usando todas as variáveis disponíveis, tune (usando validação cruzada):**
+
+
+  (i) um modelo de regressão Ridge
+  _modelo e cross validation:_
+```{r}
+data.model.ridge <- train(votos ~.,
+                    data = dataVotos.ajustado,
+                    method = "ridge")
+model.cv.ridge <- train(votos ~ ., 
+               data = dataVotos.ajustado,
+               method = "ridge",
+               trControl = dataVotos.control)
+model.cv.ridge
+```
+  _tunando:_
+```{r}
+lambda.grid <- expand.grid(lambda =0^seq(10, -2, length=100))
+
+```
+
+  (ii) um modelo de regressão Lasso
+  _modelo e cross validation:_
+```{r}
+data.model.lasso <- train(votos ~.,
+                    data = dataVotos.ajustado,
+                    method = "lasso")
+model.cv.lasso <- train(votos ~ ., 
+               data = dataVotos.ajustado,
+               method = "lasso",
+               trControl = dataVotos.control)
+model.cv.lasso
+```
+  (iii) um modelo KNN. 
+ _modelo e validacao:_
+```{r}
+data.model.knn <- train(votos ~.,
+                    data = dataVotos.ajustado,
+                    method = "knn")
+model.cv.knn <- train(votos ~ ., 
+               data = dataVotos.ajustado,
+               method = "knn",
+               trControl = dataVotos.control)
+model.cv.knn
+```
+
+  Para os modelos de regressão linear, o parâmetro a ser tunado é o lambda (penalização dos coeficientes) e o KNN o número de vizinhos. (9 pts.) 
+  
+**2. Compare os três modelos em termos do erro RMSE de validação cruzada. (9 pts.)**
+**3. Quais as variáveis mais importantes segundo o modelo de regressão Ridge e Lasso?  Variáveis foram descartadas pelo Lasso? Quais? (9 pts.)**
+**4. Re-treine o melhor modelo (usando os melhores valores de parâmetros encontrados em todos os dados, sem usar validação cruzada). (9 pts.)**
+**5. Use esse último modelo treinado para prever os dados de teste que disponibilizaremos por meio da plataforma Kaggle: (a ser disponibilizado) (9 pts.)**
+
+Sites utilizados:
+1. https://drsimonj.svbtle.com/ridge-regression-with-glmnet
+
