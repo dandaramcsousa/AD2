@@ -67,17 +67,25 @@ dataVotos.control <- trainControl(method = "cv",
 ```{r}
 data.model.ridge <- train(votos ~.,
                     data = dataVotos.ajustado,
-                    method = "ridge")
+                    method = "ridge"
+                    )
 model.cv.ridge <- train(votos ~ ., 
                data = dataVotos.ajustado,
                method = "ridge",
-               trControl = dataVotos.control)
+               trControl = dataVotos.control
+               )
 model.cv.ridge
 ```
   _tunando:_
 ```{r}
 lambda.grid <- expand.grid(lambda =0^seq(10, -2, length=100))
+model.cv.ridge.tune <- train(votos ~ ., 
+               data = dataVotos.ajustado,
+               method = "ridge",
+               trControl = dataVotos.control,
+               tuneGrid = lambda.grid
 
+               )
 ```
 
   (ii) um modelo de regressão Lasso
@@ -89,7 +97,8 @@ data.model.lasso <- train(votos ~.,
 model.cv.lasso <- train(votos ~ ., 
                data = dataVotos.ajustado,
                method = "lasso",
-               trControl = dataVotos.control)
+               trControl = dataVotos.control
+               )
 model.cv.lasso
 ```
   (iii) um modelo KNN. 
@@ -97,11 +106,13 @@ model.cv.lasso
 ```{r}
 data.model.knn <- train(votos ~.,
                     data = dataVotos.ajustado,
-                    method = "knn")
+                    method = "knn"
+                    )
 model.cv.knn <- train(votos ~ ., 
                data = dataVotos.ajustado,
                method = "knn",
-               trControl = dataVotos.control)
+               trControl = dataVotos.control
+               )
 model.cv.knn
 ```
 
