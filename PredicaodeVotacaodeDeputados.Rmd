@@ -52,9 +52,9 @@ dataVotos.teste <- dataVotos.ajustado[-train_id,]
 
 _reamostragem:_
 ```{r}
-dataVotos.control <- trainControl(method = "cv",
-                                  number = 10,
-                                  repeats = 10
+dataVotos.control <- trainControl(method = "repeatedcv",
+                                  number = 5,
+                                  repeats = 5
                                   )
 
 ```
@@ -66,63 +66,94 @@ dataVotos.control <- trainControl(method = "cv",
   _modelo e cross validation:_
 ```{r}
 data.model.ridge <- train(votos ~.,
-                    data = dataVotos.ajustado,
+                    data = dataVotos.treino,
                     method = "ridge"
                     )
 model.cv.ridge <- train(votos ~ ., 
-               data = dataVotos.ajustado,
-               method = "ridge",
-               trControl = dataVotos.control
-               )
-model.cv.ridge
-```
-  _tunando:_
-```{r}
-lambda.grid <- expand.grid(lambda =0^seq(10, -2, length=100))
-model.cv.ridge.tune <- train(votos ~ ., 
-               data = dataVotos.ajustado,
+               data = dataVotos.treino,
                method = "ridge",
                trControl = dataVotos.control,
-               tuneGrid = lambda.grid
-
+               preProcess = c('scale', 'center', 'nzv'),
+               tuneLength = 5
                )
+model.cv.ridge
 ```
 
   (ii) um modelo de regressão Lasso
   _modelo e cross validation:_
 ```{r}
 data.model.lasso <- train(votos ~.,
-                    data = dataVotos.ajustado,
+                    data = dataVotos.treino,
                     method = "lasso")
 model.cv.lasso <- train(votos ~ ., 
-               data = dataVotos.ajustado,
+               data = dataVotos.treino,
                method = "lasso",
-               trControl = dataVotos.control
+               trControl = dataVotos.control,
+               preProcess = c('scale', 'center', 'nzv'),
+               tuneLength = 5
                )
 model.cv.lasso
 ```
+  
   (iii) um modelo KNN. 
  _modelo e validacao:_
 ```{r}
 data.model.knn <- train(votos ~.,
-                    data = dataVotos.ajustado,
+                    data = dataVotos.treino,
                     method = "knn"
                     )
 model.cv.knn <- train(votos ~ ., 
-               data = dataVotos.ajustado,
+               data = dataVotos.treino,
                method = "knn",
-               trControl = dataVotos.control
+               trControl = dataVotos.control,
+               preProcess = c('scale', 'center', 'nzv'),
+               tuneLength = 5
                )
 model.cv.knn
 ```
 
-  Para os modelos de regressão linear, o parâmetro a ser tunado é o lambda (penalização dos coeficientes) e o KNN o número de vizinhos. (9 pts.) 
   
 **2. Compare os três modelos em termos do erro RMSE de validação cruzada. (9 pts.)**
-**3. Quais as variáveis mais importantes segundo o modelo de regressão Ridge e Lasso?  Variáveis foram descartadas pelo Lasso? Quais? (9 pts.)**
-**4. Re-treine o melhor modelo (usando os melhores valores de parâmetros encontrados em todos os dados, sem usar validação cruzada). (9 pts.)**
-**5. Use esse último modelo treinado para prever os dados de teste que disponibilizaremos por meio da plataforma Kaggle: (a ser disponibilizado) (9 pts.)**
 
-Sites utilizados:
-1. https://drsimonj.svbtle.com/ridge-regression-with-glmnet
+**3. Quais as variáveis mais importantes segundo o modelo de regressão Ridge e Lasso?  Variáveis foram descartadas pelo Lasso? Quais? (9 pts.)**
+```{r}
+ridge <- ggplot(varImp(model.cv.ridge))
+ridge
+dataVotos.treino.ridge <- dataVotos.treino %>%
+  select(-recursos_de_outros_candidatos.comites, -recursos_proprios)
+```
+
+```{r}
+lasso <- ggplot(varImp(model.cv.lasso))
+lasso
+dataVotos.treino.lasso <- dataVotos.treino %>%
+  select(-recursos_de_outros_candidatos.comites,recursos_proprios)
+```
+
+**4. Re-treine o melhor modelo (usando os melhores valores de parâmetros encontrados em todos os dados, sem usar validação cruzada). (9 pts.)**
+__sem validacao cruzada__
+
+```{r}
+data.model.lasso.re <- train(votos ~.,
+                    data = dataVotos.treino.lasso,
+                    method = "lasso"
+                    )
+model.cv.lasso.re <- train(votos ~ ., 
+               data = dataVotos.treino.lasso,
+               method = "lasso",
+               preProcess = c('scale', 'center', 'nzv'),
+               fraction = 0.1 
+               )
+model.cv.lasso.re
+```
+```{r}
+
+```
+
+**5. prediçoes**
+```{r}
+pred.ridge <- predict(model.cv.ridge, dataVotos.treino$votos)
+confusionMatrix(pred.ridge, dataVotos$votos)
+```
+
 
