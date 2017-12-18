@@ -116,7 +116,6 @@ model.cv.knn
 ```
 
   
-**Comparação em termos do erro RMSE de validação cruzada.**
  Usamos uma reamostragem com validação cruzada como vimos acima e os resultados foram:  
 
 | . | Ridge | Lasso | KNN |  
@@ -128,51 +127,121 @@ model.cv.knn
 
 Podemos ver que o RSME utilizado Ridge é melhor que com Lasso mas o melhor de todos é o que KNN apresenta. Porém o R² do Lasso é o melhor dentre os três modelos. E, novamente, KNN se destaca no valor de MAE.
 
+**Comparação em termos do erro RMSE de validação cruzada.**
+Para termos uma noção melhor do poder preditivo com nossos dados de teste, temos:
+
+```{r}
+rmse <- function(err) {
+    sqrt(mean(err^2))
+}
+
+ridge.pred <- predict(model.cv.ridge, dataVotos.teste)
+ridge.rmse <- rmse(ridge.pred - dataVotos.teste$votos)
+
+lasso.pred <- predict(model.cv.lasso, dataVotos.teste)
+lasso.rmse <- rmse(lasso.pred - dataVotos.teste$votos)
+
+ridge.rmse
+lasso.rmse
+```
+Vemos que para Ridge temos RMSE de `28887.08` e para Lasso `24974.48`. Sendo assim, vemos que o Lasso é ligeiramente menor que o Ridge a junto com a tabela mais acima percebemos que ambos tem um comportamento até que semelhante.
+
 [^1]: Em Ridge o final value usado é o melhor lambda, em Lasso é fraction e com KNN é k.
 
 
 **As variáveis mais importantes segundo o modelo de regressão Ridge e Lasso**
 
-Para a importância das variáveis de cada modelo, vamos observar os seguintes gráficos e já modificar de acordo com a não importância de variáveis.
+Para a importância das variáveis de cada modelo, vamos observar os seguintes gráficos e já modificar de acordo com a não importância de variáveis do melhor modelo.
 ```{r}
-ridge <- ggplot(varImp(model.cv.ridge))
+ridge <- ggplot(varImp(model.cv.ridge)) + 
+  labs(title="Importância de variáveis (Ridge)", x="Variável", y="Importância")
+
 ridge
-dataVotos.treino.ridge <- dataVotos.treino %>%
-  select(-recursos_de_outros_candidatos.comites, -recursos_proprios)
 ```
-Com Ridge,as variáveis de `recursos_de_outros_candidatos.comites` e `recursos_proprios` não tiveram importância. Assim como mais abaixo veremos que em Lasso elas também não são importantes. 
+
+Com Ridge,as variáveis de `recursos_de_outros_candidatos.comites` e `recursos_proprios` não tiveram importância. Assim como mais abaixo veremos que em Lasso elas também não são importantes.
+
 ```{r}
-lasso <- ggplot(varImp(model.cv.lasso))
+lasso <- ggplot(varImp(model.cv.lasso)) +
+  labs(title="Importância de variáveis (Ridge)", x="Variável", y="Importância")
 lasso
 dataVotos.treino.lasso <- dataVotos.treino %>%
   select(-recursos_de_outros_candidatos.comites,recursos_proprios)
 ```
 
-**Re-treino do melhor modelo (usando os melhores valores de parâmetros encontrados em todos os dados, sem usar validação cruzada). (9 pts.)**
-__sem validacao cruzada__
 
-<!-- ```{r} -->
-<!-- data.model.lasso.re <- train(votos ~., -->
-<!--                     data = dataVotos.treino.lasso, -->
-<!--                     method = "lasso" -->
-<!--                     ) -->
-<!-- model.cv.lasso.re <- train(votos ~ .,  -->
-<!--                data = dataVotos.treino.lasso, -->
-<!--                method = "lasso", -->
-<!--                preProcess = c('scale', 'center', 'nzv'), -->
-<!--                fraction = 0.1  -->
-<!--                ) -->
-<!-- model.cv.lasso.re -->
-<!-- ``` -->
+**Re-treino do melhor modelo (usando os melhores valores de parâmetros encontrados em todos os dados, sem usar validação cruzada)**    
 
-<!-- ```{r} -->
+Um pequeno resumo do que veremos mais abaixo:  
 
-<!-- ``` -->
+| . | Treino | Teste | Completo |  
+|:---------:|:------:|:------:|:------:|
+| RSME | 36153.43 | 24216.11 | 33387.62 | 
 
-<!-- **5. prediçoes** -->
-<!-- ```{r} -->
-<!-- pred.ridge <- predict(model.cv.ridge, dataVotos.treino$votos) -->
-<!-- confusionMatrix(pred.ridge, dataVotos$votos) -->
-<!-- ``` -->
+É possível então perceber que o RSME do nosso dado de treino está próximo ao completo.  
+
+Nosso melhor modelo é o Lasso e retreinando ele temos:
+
+```{r}
+data.model.lasso <- train(votos ~.,
+                    data = dataVotos.treino.lasso,
+                    method = "lasso"
+                    )
+model.cv.lasso <- train(votos ~ .,
+               data = dataVotos.treino.lasso,
+               method = "lasso",
+               preProcess = c('scale', 'center', 'nzv'),
+               tuneLength = 5
+               )
+lasso.pred <- predict(model.cv.lasso, dataVotos.treino)
+lasso.rmse <- rmse(lasso.pred - dataVotos.treino$votos)
+lasso.rmse
+```
+
+O valor do RMSE foi menor que o anterior `RSME = 36153.43`. De forma geral, a mudança para com a validação cruzada é muito pequena porque esse método não altera o resultado dos testes.  
+
+Agora, com os dados de teste:
+
+```{r}
+dataVotos.lasso <- dataVotos.teste %>%
+  select(-recursos_de_outros_candidatos.comites,recursos_proprios)
+
+data.model.lasso <- train(votos ~.,
+                    data = dataVotos.lasso,
+                    method = "lasso"
+                    )
+model.cv.lasso <- train(votos ~ .,
+               data = dataVotos.lasso,
+               method = "lasso",
+               preProcess = c('scale', 'center', 'nzv'),
+               tuneLength = 5
+               )
+lasso.pred <- predict(model.cv.lasso, dataVotos.teste)
+lasso.rmse <- rmse(lasso.pred - dataVotos.teste$votos)
+lasso.rmse
+
+```
+
+E, com todos os dados:
+
+```{r}
+dataVotos.lasso <- dataVotos.ajustado %>%
+  select(-recursos_de_outros_candidatos.comites,recursos_proprios)
+
+data.model.lasso <- train(votos ~.,
+                    data = dataVotos.lasso,
+                    method = "lasso"
+                    )
+model.cv.lasso <- train(votos ~ .,
+               data = dataVotos.lasso,
+               method = "lasso",
+               preProcess = c('scale', 'center', 'nzv'),
+               tuneLength = 5
+               )
+lasso.pred <- predict(model.cv.lasso, dataVotos.ajustado)
+lasso.rmse <- rmse(lasso.pred - dataVotos.ajustado$votos)
+lasso.rmse
+
+```
 
 
