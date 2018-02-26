@@ -23,46 +23,59 @@ theme_set(theme_minimal())
 
 ```{r}
 dataVotos <- read.csv("eleicoes2014.csv", encoding = "latin1") %>%
-  mutate(sequencial_candidato = as.character(sequencial_candidato)) %>%
-  mutate(cargo = NULL)
+  mutate(nome = as.character(nome),
+         UF = as.character(UF),
+         partido = as.character(partido),
+         setor_economico_receita = as.character(setor_economico_receita),
+         setor_economico_despesa = as.character(setor_economico_despesa),
+         cargo = as.character(cargo),
+         sexo = as.character(sexo),
+         grau = as.character(grau),
+         estado_civil = as.character(estado_civil),
+         sequencial_candidato = as.character(sequencial_candidato)
+         )
 
 missmap(dataVotos)
 ```
 
-A partir do missmap acima percebemos que há muitos dados faltando. Por isso, vamos excluí-los para o não comprometimento do modelo. 
+A partir do missmap acima percebemos que há muitos dados faltando. Por isso,para fins dessa atividade, vamos excluí-los do modelo. 
 
 ```{r}
 dataVotos.rm <- dataVotos %>%
-  select(-`recursos_de_outros_candidatos.comites`, -recursos_de_partidos,-recursos_de_pessoas_juridicas, -recursos_de_pessoas_físicas, -recursos_proprios, -sequencial_candidato, -numero_cadidato, -setor_economico_receita, -setor_economico_despesa, -nome)
+  select(-`recursos_de_outros_candidatos.comites`, -recursos_de_partidos,-recursos_de_pessoas_juridicas, -recursos_de_pessoas_físicas, -recursos_proprios, -sequencial_candidato, -numero_cadidato, -setor_economico_receita, -setor_economico_despesa, -nome, -cargo)
 ```
 
 
 ### Questões
-**1.Um modelo de regressão múltipla com todas as variáveis é plausível para explicar a variação em y (número de votos)? Justifique sua resposta. (9 pts.)**
+**1.Um modelo de regressão múltipla com todas as variáveis é plausível para explicar a variação em y (número de votos)? Justifique sua resposta.**
 
 Vamos criar o modelo de regressão e analisá-lo.
 
 ```{r}
+
 dataVotos.model <- lm(votos~., data = dataVotos.rm)
 summary(dataVotos.model)
 
 ```
-A estatística F é maior que 1, isso nos dá a ideia de que há variáveis que estão ligadas com a variável votos. O tamanho da amostra também é maior do que o número de preditores e com essas duas informações podemos inferir que há ao menos uma relação entre variável de entrada e variável alvo. 
+
+A estatística F ( = 45.88) é maior que 1, isso nos dá a ideia de que há variáveis que estão ligadas com a variável votos. O tamanho da amostra também é maior do que o número de preditores e com essas duas informações podemos inferir que há ao menos uma relação entre variável de entrada e variável alvo. 
 Visto isto, podemos voltar os olhos para o p-value. Se ele for menor que 0,05 isso indica que há fortes evidências que a variável seja boa preditora para o modelo. Caso contrário, a ideia é que, talvez, a variável não seja uma boa preditora para o modelo. No nosso caso, o p-value é abaixo de 0,05 e isso é um bom sinal.
 Vale observar também o R² ajustado que mede o quão bem o modelo consegue explicar a variabilidade dos dados. Nosso R² ajustado é de 0,4543 e isso talvez seja uma indicação para fazermos ajustes no modelo.
 
 
-**2.Todas as variáveis são úteis para o modelo de regressão? Há variáveis redudantes? Justifique sua resposta em ambos os casos. (9 pts.)**
+**2.Todas as variáveis são úteis para o modelo de regressão? Há variáveis redudantes? Justifique sua resposta em ambos os casos.**
 
-Nesse questionamento usaremos a seleção de variáveis para diagnosticar quais preditores estão associados com a variável resposta e quais podem ser descartados.
+Nesse questionamento usaremos a seleção de variáveis para diagnosticar quais preditores estão associados com a variável resposta e quais podem ser descartados. Utilizaremos o método exaustivo que produz todos os modelos possíveis e, para isso, vamos descartar as variáveis partido e UF pois possuem muitos níveis e isso tornaria ainda mais lento o processo.
 
 ```{r}
-dataVotos.uteis <- regsubsets(votos ~ ., data = dataVotos.rm,nbest = 1,nvmax = NULL, force.in = NULL, force.out = NULL,method = "forward")
+dataVotos.rm.filtrada <- dataVotos.rm %>%
+  select(-partido,-UF)
+dataVotos.uteis <- regsubsets(votos ~ ., data = dataVotos.rm.filtrada,nbest = 1,nvmax = NULL, force.in = NULL, force.out = NULL,method = "exhaustive")
 summary.out <- summary(dataVotos.uteis)
 summary.out
 ```
 
-Temos mais de 60 possíveis modelos e diante disso gostaríamos de saber qual o melhor modelo seria melhor ajustado para nós.
+Temos 20 possíveis modelos e diante disso gostaríamos de saber qual o melhor modelo seria melhor (aquele que possui o melhor R² ajustado) para nós.
 
 ```{r}
 which.max(summary.out$adjr2)
@@ -70,30 +83,58 @@ which.max(summary.out$adjr2)
 E, agora, saber desse modelo, quais são as variáveis presentes nele.
 
 ```{r}
-summary.out$which[38,]
+summary.out$which[13,]
 ```
 
-UFBA, UFDF, UFMG, UFPB, UFRJ, UFRO, UFRS, UFSE, partidoPMN, partidoPR,partidoPSC, partidoPSDB,quantidade_doacoes, total_receita, quantidade_despesas, total_despesa, grauSUPERIOR COMPLETO, UFAP, UFCEM UFMA, UFMS, UFPA, UFPE, UFRN, UFRR, UFSC, partidoPMDB, partidoPP, partidoPRB, partidoPTB, quantidade_doadores, media_receita, quantidade_fornecedores, media_despesa, sexoMASCULINO, grauSUPERIOR INCOMPLETO, estado_civilSEPARADO(A) JUDICIALMENTE, estado_civilVIÚVO(A) 
+Então, para nós, as variáveis que influenciam são:
+```{r}
+var <- summary.out$which[13,]
+indexes <- which(summary.out$which[13,])
+var_true <- names(var)[indexes]
+var_true
+```
 
 
-**3.No caso de haver variáveis pouco explicativas e/ou redudantes, construa um novo modelo sem essas variáveis e o compare ao modelo com todas as variáveis (e.g. em termos de R2 e RSE). (9 pts.)**
-No visto acima, apenas o fator idade não importaria. Assim, temos um novo modelo. 
+**3.No caso de haver variáveis pouco explicativas e/ou redudantes, construa um novo modelo sem essas variáveis e o compare ao modelo com todas as variáveis (e.g. em termos de R2 e RSE).**
+
+No caso visto acima, vimos as variáveis influenciadoras. Assim, temos um novo modelo. 
 ```{r}
 dataVotos.model.new <- dataVotos.rm %>%
-  dplyr :: select(
-    UF, partido, quantidade_doacoes, total_receita,quantidade_despesas, total_despesa, grau, quantidade_doadores, media_receita, quantidade_fornecedores, media_despesa, estado_civil, sexo,         votos)
+  select(
+    quantidade_doacoes, quantidade_doadores, total_receita, media_receita, quantidade_despesas, quantidade_fornecedores, total_despesa, media_despesa, idade, sexo, grau, estado_civil, votos
+    )
 data.best.model <- lm(votos~., data = dataVotos.model.new)
 summary(data.best.model)
 ```
 
-Comparando, no primeiro modelo a estatística F era de 45,88 contra o dee agora de 46,49, o R² ajustado agora é de 0,4544 que é muito pouco maior que o anterior.
-
-### 4. Analise plots de resíduos e verifique se há tendências nos erros. (9 pts.)
+Comparando, no primeiro modelo a estatística F era de 45,88 contra o de agora de 169.8, o R² ajustado agora é de 0,4585 que é muito pouco menor que o anterior. E, percebemos que o p-value das variáveis sexo, grau e estado civil são muito altos. Faremos assim, um modelo excluindo essas variáveis.
 
 ```{r}
-plot(dataVotos.model)$residuals
+dataVotos.model.final <- dataVotos.model.new %>%
+  select(
+    -sexo,-grau,-estado_civil
+  )
+data.real.best.model <- lm(votos~., data = dataVotos.model.final)
+summary(data.real.best.model)
+```
+
+Comparando então, temos uma mudança principalmente na estatística F. Os p-values no primeiro modelos estavam altos e diminuiram consideravelmente no último modelo. O RSE agora é de 33710 com 4142 graus de liberdade contra 33450 com 4074 graus de liberdade no primeiro modelo. Por fim, o R² e R² ajustado eram de 0.4644 e 0.4543 respectivamente no primeiro modelo e agora são de 0.4469 e 0.4457, que não indica que nosso último modelo é pior que o primeiro, apenas que ele não de adequa tão bem à esse conjunto de dados mas tem mais poder de generalização.
+
+**4. Analise plots de resíduos e verifique se há tendências nos erros.**
+
+```{r}
+dataVotos.model.final$residuals <- residuals(data.real.best.model)
+var.names <- c(names(dataVotos.model.final), "residuals")
+plot <- reshape2::melt(dataVotos.model.final[, var.names], id="residuals")
+
+ggplot(plot, aes(x=value, y=residuals)) + 
+  geom_point(color="dark blue") + facet_wrap(~variable)
 
 ```
 
-### 5. Quais variáveis conseguem explicar melhor o número de votos? Justifique sua resposta. (9 pts.)
+Apesar de alguns outliers, é possível perceber que os pontos, em sua maioria, se concentram próximos ao zero no eixo y e disso podemos entender que nosso modelo não superstima ou subestima os valores.
+
+**5. Quais variáveis conseguem explicar melhor o número de votos? **
+
+A partir de toda nossa análise, observando os p-values onde quanto menor o valor maior a chance de correlação, podemos afirmar que as variáveis *quantidade_doacoes, quantidade_doadores, total_receita, media_receita, quantidade_despesas, quantidade_fornecedores, total_despesa, media_despesa* possuem esses valores baixos que buscamos e são variáveis que possivelmente conseguem explicar o número de votos.
 
