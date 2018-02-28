@@ -13,6 +13,9 @@ library(ggplot2)
 
 
 library(caret)
+library(ROSE)
+library(rpart)
+library(rpart.plot) 
 
 theme_set(theme_minimal())
 ```
@@ -22,6 +25,10 @@ theme_set(theme_minimal())
 data <- read.csv("train.csv")
 test <- read.csv("test.csv")
 submission <- read.csv("sample_submission.csv")
+
+#facilitar análises futuras
+data$isDeputado = ifelse(data$descricao_ocupacao == "DEPUTADO",1,0)
+
 
 #criar partição
 dataPartition <- createDataPartition(y = data$situacao_final, p=0.75, list=FALSE);
@@ -46,27 +53,56 @@ ggplot(df,aes(x="", y=count , fill= situacao)) +
 ```
 
 ```{r}
-formula = as.formula(situacao_final ~ partido + descricao_cor_raca + sexo, total_despesa)
+#fazer up pra balancear
+formula = as.formula(situacao_final ~ partido + descricao_cor_raca + sexo + total_despesa + descricao_ocupacao + despesa_max_campanha)
 
 fitControl <- trainControl(method = "repeatedcv",
-                           search = "random",
-                           sampling = "up"
+                           search = "random"
                            )
-model <- train(form =formula,
-               data = data.train,
-               method = "LogitBoost",
-               trControl = fitControl,
-               family="binomial",
-               na.action = na.omit
-               )
+model <- glm(formula = formula, data = data.train, family = "binomial")
 
+summary(model)
 ```
 
+```{r}
+
+# os escolhidos são os que possuem *** ou ** dado o summary
+data.train <- data.train %>%
+  select(situacao_final, total_despesa, isDeputado, despesa_max_campanha)
+data.test <- data.test %>%
+  select(situacao_final, total_despesa, isDeputado, despesa_max_campanha)
+
 #oversampling #undersampling
-#package:unbalance
+
+rose.train <- ROSE(situacao_final~., data = data.train)$data
+table(rose.train$situacao_final)
+
+formula = as.formula(situacao_final ~.)
+model.escolhidos <- glm(formula = formula, data = rose.train, family = "binomial")
+summary(model.escolhidos)
+```
 
 ```{r}
-# variáveis envolvidas no modelo
+#despesa_max sem importancia
+
+rose.train <- rose.train %>%
+  select(situacao_final,total_despesa,isDeputado)
+
+control <- rpart.control(maxdepth = 20,
+                         minsplit = 20,
+                         cp = 0.01
+                         )
+arvore <- rpart(formula = formula, data = data.train, control = control)
+prp(arvore)
+```
+
+
+
+```{r}
+modelo2 <- train(formula = formula,
+                 data = data.train,
+                 method = "adaboost",
+                 trControl = fitControl)
 
 ```
 
