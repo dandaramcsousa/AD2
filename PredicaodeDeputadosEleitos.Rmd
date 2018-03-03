@@ -5,6 +5,7 @@ date: "26 de fevereiro de 2018"
 output: html_document
 ---
 
+*Carregando bibliotecas necessárias*
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 library(readr)
@@ -20,7 +21,7 @@ library(rpart.plot)
 theme_set(theme_minimal())
 ```
 
-
+*Carregando e arrumando os dados para a predição*
 ```{r}
 data <- read.csv("train.csv")
 test <- read.csv("test.csv")
@@ -36,9 +37,9 @@ data.train <- data[dataPartition, ]
 data.test <- data[-dataPartition, ]
 ```
 
-1. Há desbalanceamento das classes (isto é, uma classe tem muito mais instâncias que outra)? Em que proporção? Quais efeitos colaterais o desbalanceamento de classes pode causar no classificador?
+**1. Há desbalanceamento das classes (isto é, uma classe tem muito mais instâncias que outra)? Em que proporção? Quais efeitos colaterais o desbalanceamento de classes pode causar no classificador?**
 
-Como visto abaixo, a classe marjoritária é a de não eleitos. Sendo assim, há um desbalanceamento onde eleitos são apenas cerca de 10% dos dados. Isso pode causar para o modelo uma desigualdade na hora de aprender a classificar o resultado final. Para isso, mais abaixo usaremos uma função para eliminar aleatoriamente linhas de deputados não eleitos igualando mais a situação.
+Como visto abaixo, a classe marjoritária é a de não eleitos. Sendo assim, há um desbalanceamento onde eleitos são apenas cerca de 10% dos dados. Isso pode causar para o modelo uma desigualdade na hora de aprender a classificar o resultado final. Para isso, mais abaixo usaremos um método para balancear as classes, criando instâncias das que estão baixas e eliminando das marjoritárias.
 
 ```{r}
 n_eleitos <- data %>% filter(situacao_final == "eleito") %>% nrow()
@@ -52,18 +53,16 @@ ggplot(df,aes(x="", y=count , fill= situacao)) +
   
 ```
 
+*analisando qual quais classes são realmente importantes para o modelo*
 ```{r}
-#fazer up pra balancear
+
 formula = as.formula(situacao_final ~ partido + descricao_cor_raca + sexo + total_despesa + descricao_ocupacao + despesa_max_campanha)
 
-fitControl <- trainControl(method = "repeatedcv",
-                           search = "random"
-                           )
 model <- glm(formula = formula, data = data.train, family = "binomial")
 
 summary(model)
 ```
-
+Vendo o modelo acima escolheremos as variáveis que possuem três ou duas * de acordo com o summary. Isso indica a importância da variável para a situação final do candidato.
 ```{r}
 
 # os escolhidos são os que possuem *** ou ** dado o summary
@@ -76,42 +75,101 @@ data.test <- data.test %>%
 
 rose.train <- ROSE(situacao_final~., data = data.train)$data
 table(rose.train$situacao_final)
+```
+
+```{r}
 
 formula = as.formula(situacao_final ~.)
 model.escolhidos <- glm(formula = formula, data = rose.train, family = "binomial")
 summary(model.escolhidos)
 ```
 
+Após utilizar o ROSE e observar o modelo apenas com as variáveis anteriormente escolhida percebe-se que a variável $despesa_max_cammpanha$ não influencia tanto. Por isso, vamos descondiserá-la daqui para frente.
+
+**Treine: um modelo de regressão logística, uma árvore de decisão e um modelo de adaboost. Tune esses modelos usando validação cruzada e controle overfitting se necessário, considerando as particularidades de cada modelo. **
+
+*treino*
 ```{r}
-#despesa_max sem importancia
+fitControl <- trainControl(method = "repeatedcv",
+                           number = "10",
+                           repeats = "5",
+                           classProbs = TRUE
+                           )
+rose.train <- rose.train %>% select(situacao_final,total_despesa,isDeputado)
+model.final <- glm(formula = formula, data = rose.train, family = "binomial")
+summary(model.final)
+```
 
-rose.train <- rose.train %>%
-  select(situacao_final,total_despesa,isDeputado)
-
-control <- rpart.control(maxdepth = 20,
-                         minsplit = 20,
-                         cp = 0.01
-                         )
-arvore <- rpart(formula = formula, data = data.train, control = control)
-prp(arvore)
+*arvore*
+```{r}
+arvore <- train(formula,
+                 data=rose.train,
+                 method = "rpart",
+                 cp=0.001,  # parâmetro de complexidade
+                 maxdepth=20)
+arvore
 ```
 
 
-
 ```{r}
-modelo2 <- train(formula = formula,
-                 data = data.train,
-                 method = "adaboost",
-                 trControl = fitControl)
-
+model.ada <- train(formula,
+                   rose.train,
+                   method = "adaboost"
+                  )
+model.ada
 ```
 
 
->Treine: um modelo de regressão logística, uma árvore de decisão e um modelo de adaboost. Tune esses modelos usando validação cruzada e controle overfitting se necessário, considerando as particularidades de cada modelo. 
+**3.Reporte acurácia, precision, recall e f-measure no treino e validação. Como você avalia os resultados? Justifique sua resposta.**
 
->Reporte acurácia, precision, recall e f-measure no treino e validação. Como você avalia os resultados? Justifique sua resposta.
+Aqui, a acurácia será feita com o adaboost.
 
->Interprete as saídas dos modelos. Quais atributos parecem ser mais importantes de acordo com cada modelo? Crie pelo menos um novo atributo que não está nos dados originais e estude o impacto desse atributo
+As métricas acima são definidas pelos seguintes termos:
+$$Acurácia = (TP + TN)/(TP + TN + FP + FN)$$
+Nos diz a proporção das observações que forma classificadas corretamente.
+$$Precision = TP / (TP + FP)$$
+Nos diz quantas das observações preditas como verdadeiras realmente são positivas.
+$$Recall = TP / (TP + FN)$$
+Nos diz quantas das observações positivas foram corretamente preditas.  
+Onde, TP são os verdadeiros positivos, TN os verdadeiros negativos, FP os falsos positivos e FN os falsos negativos.  
+
+```{r}
+#predicao
+data.test$prediction <- predict(model.ada,data.test)
+
+TP <- data.test %>% filter(situacao_final == "eleito", prediction == "eleito") %>% nrow()
+TN <- data.test %>% filter(situacao_final == "nao_eleito", prediction == "nao_eleito") %>% nrow()
+FP <- data.test %>% filter(situacao_final == "nao_eleito", prediction == "eleito") %>% nrow()
+FN <- data.test %>% filter(situacao_final == "eleito", prediction == "nao_eleito") %>% nrow()
+
+accuracy <- (TP + TN)/(TP + TN + FP + FN)
+precision <- TP / (TP + FP)
+recall <- TP / (TP + FN)
+
+f_measure <- 2 * (precision * recall) / (precision + recall)
+```
+
+```{r}
+accuracy
+```
+```{r}
+precision
+```
+```{r}
+recall
+```
+O nível de acurácia estando em cerca de 93% é um indicativo de que o modelo cumpre seu papel apesar de ter uma precisão de apenas 67%. Outro lado positivo é que o recall indica que 74% das vezes uma variável predita como positiva realmente era positiva.  
+```{r}
+f_measure
+```
+
+O f-measure é calculado como a média harmônica da precisão e do recall. O valor mais próximo de 1 é mais satisfatório indicando que o modelo é um bom preditor.
+```{r}
+confusionMatrix(data.test$prediction,data.test$situacao_final)
+```
+
+
+**4.Interprete as saídas dos modelos. Quais atributos parecem ser mais importantes de acordo com cada modelo? Crie pelo menos um novo atributo que não está nos dados originais e estude o impacto desse atributo**
 
 >Envie seus melhores modelos à competição do Kaggle. Sugestões abaixo:
    Experimente outros modelos (e.g. SVM, RandomForests e GradientBoosting)
