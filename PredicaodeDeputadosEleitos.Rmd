@@ -179,6 +179,7 @@ data.train.dep <- data.train.dep %>%
 
 rose.train.dep <- ROSE(situacao_final~., data = data.train.dep)$data
 rose.train.dep$isDeputado <- ifelse(rose.train.dep$descricao_ocupacao == "DEPUTADO", 1, 0)
+rose.train.dep <- rose.train.dep %>% select(situacao_final, total_despesa, isDeputado, despesa_max_campanha)
 
 model.dep <- glm(formula = situacao_final~.,rose.train.dep,family = binomial)
 arvore.dep <- train(formula,
@@ -189,17 +190,14 @@ arvore.dep <- train(formula,
 arvore.dep
 
 ```
-
+O valor final usado pelo modelo com a nova variável é bem menor que o antigo. A acurácia também é menor e podemos predizer que o modelo anterior é mais preciso que o atual.
+Por fim, o modelo tentado com adaboost entra em loop e não se torna preciso nem utilizável.
 ```{r}
-model.ada.dep <- train(formula,
-                   rose.train.dep,
-                   method = "adaboost"
-                  )
-model.ada
+#model.ada.dep <- train(formula,
+#                   rose.train.dep,
+#                   method = "adaboost"
+#                  )
+#model.ada
 
 ```
 
-
->Envie seus melhores modelos à competição do Kaggle. Sugestões abaixo:
-   Experimente outros modelos (e.g. SVM, RandomForests e GradientBoosting)
-   Crie novos atributos.
