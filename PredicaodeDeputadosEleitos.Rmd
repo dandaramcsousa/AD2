@@ -170,6 +170,35 @@ confusionMatrix(data.test$prediction,data.test$situacao_final)
 
 
 **4.Interprete as saídas dos modelos. Quais atributos parecem ser mais importantes de acordo com cada modelo? Crie pelo menos um novo atributo que não está nos dados originais e estude o impacto desse atributo**
+Aproveitando o isDeputado já previamente criado vamos observar como ele impacta no modelo.
+
+```{r}
+data.train.dep <- data[dataPartition, ]
+data.train.dep <- data.train.dep %>%
+  select(situacao_final, total_despesa, isDeputado, despesa_max_campanha,descricao_ocupacao)
+
+rose.train.dep <- ROSE(situacao_final~., data = data.train.dep)$data
+rose.train.dep$isDeputado <- ifelse(rose.train.dep$descricao_ocupacao == "DEPUTADO", 1, 0)
+
+model.dep <- glm(formula = situacao_final~.,rose.train.dep,family = binomial)
+arvore.dep <- train(formula,
+                 data=rose.train.dep,
+                 method = "rpart",
+                 cp=0.001,  # parâmetro de complexidade
+                 maxdepth=20)
+arvore.dep
+
+```
+
+```{r}
+model.ada.dep <- train(formula,
+                   rose.train.dep,
+                   method = "adaboost"
+                  )
+model.ada
+
+```
+
 
 >Envie seus melhores modelos à competição do Kaggle. Sugestões abaixo:
    Experimente outros modelos (e.g. SVM, RandomForests e GradientBoosting)
